@@ -11,7 +11,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/pinia@3/dist/pinia.iife.prod.js"></script>
-    <!-- Markdown Parser -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
@@ -20,14 +19,11 @@
         .handsontable { font-family: inherit; }
         [v-cloak] { display: none; }
         
-        /* Cell Styles */
         .cell-target { background-color: #eff6ff !important; }
         .cell-correct { background-color: #dcfce7 !important; color: #166534 !important; }
         .cell-incorrect { background-color: #fff1f2 !important; color: #9f1239 !important; }
         
         .htCore tr:first-child td { font-weight: bold !important; background-color: #f8fafc !important; }
-        details summary { list-style: none; }
-        details summary::-webkit-details-marker { display: none; }
         
         #hot-mount-point {
             width: 100%;
@@ -44,7 +40,7 @@
         }
 
         .loader {
-            border-top-color: #0f172a;
+            border-top-color: #000;
             animation: spinner 1.5s linear infinite;
         }
         @keyframes spinner {
@@ -52,22 +48,28 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Markdown Overrides to fit UI */
         .prose pre { background-color: #f1f5f9 !important; color: #334155 !important; border-radius: 0.75rem; }
-        .prose code { color: #0f172a !important; font-weight: 600; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
+        .prose code { color: #000 !important; font-weight: 600; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
+
+        /* Mobile Padding Minification */
+        @media (max-width: 640px) {
+            .mobile-tight { padding: 1rem !important; }
+            .mobile-x-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
+            .mobile-y-tight { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+        }
     </style>
 </head>
-<body class="p-4 md:p-8 text-slate-900 bg-[radial-gradient(circle_at_top_center,_#f8fafc_0%,_#ffffff_100%)] min-h-screen flex items-start justify-center">
+<body class="p-2 md:p-8 text-slate-900 bg-[radial-gradient(circle_at_top_center,_#f8fafc_0%,_#ffffff_100%)] min-h-screen flex items-start justify-center">
 
 <div id="app" v-cloak class="w-full max-w-5xl">
     <!-- Loading State -->
-    <div v-if="store.isLoading" class="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-3xl shadow-xl border border-slate-100">
+    <div id="loader-container" v-if="store.isLoading" class="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-3xl shadow-xl border border-slate-100">
         <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-4"></div>
         <p class="text-slate-500 font-medium">Загрузка учебных материалов...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="store.error" class="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-3xl shadow-xl border border-rose-100 p-8 text-center">
+    <div id="error-container" v-else-if="store.error" class="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-3xl shadow-xl border border-rose-100 p-8 text-center">
         <div class="bg-rose-50 text-rose-500 p-4 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -75,19 +77,19 @@
         </div>
         <h2 class="text-xl font-bold text-slate-800 mb-2">Произошла ошибка</h2>
         <p class="text-slate-500 mb-6">{{ store.error }}</p>
-        <button @click="store.fetchSteps" class="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-black transition-colors">
+        <button id="retry-btn" @click="store.fetchSteps" class="bg-black text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-colors">
             Попробовать снова
         </button>
     </div>
 
     <!-- Main UI -->
-    <div v-else class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative min-h-[600px]">
+    <div id="main-content-wrapper" v-else class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative min-h-[600px]">
         
         <!-- Hamburger Menu Content -->
-        <div v-if="store.isMenuOpen" class="absolute inset-0 z-50 bg-white p-8 flex flex-col overflow-y-auto">
+        <div id="menu-overlay" v-if="store.isMenuOpen" class="absolute inset-0 z-50 bg-white p-6 md:p-8 flex flex-col overflow-y-auto">
             <div class="flex items-center justify-between mb-10">
-                <h2 class="text-3xl font-black text-slate-900 tracking-tight">Аскель XLS</h2>
-                <button @click="store.isMenuOpen = false" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <h2 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Главы обучения</h2>
+                <button id="close-menu-btn" @click="store.isMenuOpen = false" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -95,13 +97,12 @@
             </div>
             
             <nav class="flex-grow">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Главы обучения</p>
                 <div class="space-y-2">
                     <button 
                         v-for="ch in store.getChapters" 
                         :key="ch" 
                         @click="store.selectChapterAndClose(ch)"
-                        :class="['w-full text-left px-6 py-4 rounded-2xl text-lg font-bold transition-all', store.selectedChapter === ch ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-100']"
+                        :class="['w-full text-left px-6 py-4 rounded-2xl text-lg font-bold transition-all', store.selectedChapter === ch ? 'bg-black text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-100']"
                     >
                         {{ ch }}
                     </button>
@@ -111,55 +112,58 @@
 
         <!-- Main Content -->
         <div v-show="!store.isMenuOpen" class="flex flex-col h-full">
-            <app-navigation></app-navigation>
+            <app-navigation id="top-nav"></app-navigation>
 
             <!-- Instructions Area -->
-            <div class="bg-slate-50/50 p-8 border-b border-slate-100">
+            <div id="instruction-section" class="bg-slate-50/50 p-4 md:p-8 border-b border-slate-100 mobile-tight">
                 <div class="max-w-3xl">
                     <div class="mb-2">
-                        <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">{{ store.activeStep?.title }}</h1>
+                        <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">{{ store.activeStep?.title }}</h1>
                     </div>
-                    <p class="text-slate-600 text-base mb-6">{{ store.activeStep?.instruction }}</p>
+                    <p class="text-slate-600 text-sm md:text-base mb-6">{{ store.activeStep?.instruction }}</p>
 
                     <!-- Dynamic Component Rendering -->
-                    <component :is="activeStepComponent" :step="store.activeStep"></component>
+                    <component :is="activeStepComponent" :step="store.activeStep" id="step-content-view"></component>
                 </div>
             </div>
 
             <!-- Table Component -->
-            <app-practice-table v-if="store.activeStep?.type === 'practice'"></app-practice-table>
+            <app-practice-table id="table-view" v-if="store.activeStep?.type === 'practice'"></app-practice-table>
 
             <!-- Footer Toolbar -->
-            <div class="flex items-center justify-start bg-slate-50/50 border-t border-slate-100 px-8 py-5 gap-4 mt-auto">
+            <div id="footer-toolbar" class="flex items-center justify-start bg-slate-50/50 border-t border-slate-100 px-4 md:px-8 py-4 md:py-5 gap-4 mt-auto mobile-x-tight">
                 <template v-if="store.activeStep?.type === 'practice'">
                     <button 
+                        id="validate-btn"
                         v-if="store.validationStatus !== 'success'"
                         @click="store.validateCurrentStep"
-                        class="bg-slate-900 hover:bg-black text-white px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
+                        class="bg-black hover:bg-slate-800 text-white px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
                     >
                         Проверить
                     </button>
                     <button 
+                        id="next-step-btn"
                         v-else
                         @click="store.moveToNextStep"
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
                     >
                         Продолжить
                     </button>
                     <div v-if="store.validationStatus" 
                         :class="['px-4 py-2 text-sm font-bold rounded-xl border transition-all', store.validationStatus === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700']">
-                        {{ store.validationStatus === 'success' ? 'Верно!' : 'Есть ошибки в расчетах' }}
+                        {{ store.validationStatus === 'success' ? 'Верно!' : 'Есть ошибки' }}
                     </div>
                 </template>
                 <template v-else>
                     <button 
+                        id="continue-btn"
                         @click="store.moveToNextStep" 
                         :disabled="store.activeStep?.type === 'quiz' && store.validationStatus !== 'success'"
-                        :class="['px-8 py-3 rounded-2xl font-extrabold text-sm transition-all', (store.activeStep?.type === 'quiz' && store.validationStatus !== 'success') ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-black text-white shadow-lg']"
+                        :class="['px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all', (store.activeStep?.type === 'quiz' && store.validationStatus !== 'success') ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-black hover:bg-slate-800 text-white shadow-lg']"
                     >
                         {{ store.activeStep?.type === 'quiz' ? 'Завершить проверку' : 'Перейти дальше' }}
                     </button>
-                    <span v-if="store.activeStep?.type === 'quiz' && store.validationStatus === 'success'" class="text-emerald-600 font-bold text-sm">Отлично!</span>
+                    <span v-if="store.activeStep?.type === 'quiz' && store.validationStatus === 'success'" class="text-emerald-600 font-bold text-sm ml-2">Отлично!</span>
                 </template>
             </div>
         </div>
@@ -170,7 +174,6 @@
     const { createApp, ref, onMounted, nextTick, watch, computed } = Vue;
     const { createPinia, defineStore } = Pinia;
 
-    // --- STORE ---
     const useLearningStore = defineStore('learning', {
         state: () => ({
             currentStepId: 1,
@@ -196,7 +199,6 @@
                 this.isLoading = true;
                 this.error = null;
                 const url = 'https://n.kushedow.tech/webhook/xls/steps';
-                
                 try {
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
@@ -261,29 +263,35 @@
         }
     });
 
-    // --- COMPONENTS ---
-
     const Navigation = {
         template: `
-            <header class="bg-white border-b border-slate-100 p-5 px-8 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <button @click="store.isMenuOpen = true" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            <header class="bg-white border-b border-slate-100 p-3 md:p-5 px-4 md:px-8 flex items-center justify-between mobile-x-tight">
+                <div id="nav-left" class="flex items-center gap-3">
+                    <!-- Excel Icon -->
+                    <div id="excel-logo" class="w-7 h-7 md:w-8 md:h-8 flex-shrink-0">
+                        <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <path d="M180 32H214C225.046 32 234 40.9543 234 52V204C234 215.046 225.046 224 214 224H180V32Z" fill="#1D6F42"/>
+                            <path d="M22 45.5C22 41.6023 24.8143 38.2618 28.6797 37.7464L160.68 20.1464C166.19 19.4117 171 23.6828 171 29.25V226.75C171 232.317 166.19 236.588 160.68 235.854L28.6797 218.254C24.8143 217.738 22 214.398 22 210.5V45.5Z" fill="#217346"/>
+                            <path d="M68 93L125 163M125 93L68 163" stroke="white" stroke-width="24" stroke-linecap="square"/>
                         </svg>
-                    </button>
-                    <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
-                        <div class="flex gap-1">
+                    </div>
+                    
+                    <div id="step-nav" class="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                             <button v-for="s in store.filteredSteps" :key="s.id" @click="store.setCurrentStep(s.id)"
-                                :class="['w-9 h-9 flex items-center justify-center text-[10px] font-bold rounded-xl transition-all', store.currentStepId === s.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700']">
+                                :class="['w-7 h-7 md:w-9 md:h-9 flex items-center justify-center text-[10px] md:text-xs font-bold rounded-lg transition-all', store.currentStepId === s.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700']">
                                 {{ s.id }}
                             </button>
                         </div>
+                        <span id="current-chapter-label" class="text-[10px] font-black text-slate-400 tracking-widest uppercase sm:ml-2">{{ store.selectedChapter }}</span>
                     </div>
                 </div>
-                <div class="hidden sm:block">
-                    <span class="text-xs font-black text-slate-400 tracking-widest uppercase">{{ store.selectedChapter }}</span>
-                </div>
+                
+                <button id="open-menu-btn" @click="store.isMenuOpen = true" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
             </header>
         `,
         setup() { return { store: useLearningStore() }; }
@@ -295,23 +303,23 @@
             const renderedContent = computed(() => marked.parse(props.step.content || ''));
             return { renderedContent };
         },
-        template: `<div class="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm prose prose-slate prose-sm max-w-none" v-html="renderedContent"></div>`
+        template: `<div id="theory-content" class="p-4 md:p-6 bg-white border border-slate-200 rounded-2xl shadow-sm prose prose-slate prose-sm max-w-none" v-html="renderedContent"></div>`
     };
 
     const QuizBlock = {
         props: ['step'],
         template: `
-            <div class="space-y-6">
-                <div v-for="(q, idx) in step.quiz" :key="idx" class="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                    <p class="font-bold mb-4 text-slate-800 text-lg">{{ q.question }}</p>
+            <div id="quiz-container" class="space-y-4 md:space-y-6">
+                <div v-for="(q, idx) in step.quiz" :key="idx" class="p-4 md:p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                    <p class="font-bold mb-4 text-slate-800 text-base md:text-lg">{{ q.question }}</p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button v-for="opt in q.options" :key="opt" @click="store.selectQuizOption(idx, opt)"
-                            :class="['text-left px-5 py-3 border-2 rounded-xl transition-all font-medium text-sm', getBtnClass(idx, opt)]">
+                            :class="['text-left px-4 md:px-5 py-3 border-2 rounded-xl transition-all font-medium text-xs md:text-sm', getBtnClass(idx, opt)]">
                             <div class="flex items-center justify-between">
                                 <span>{{ opt }}</span>
                                 <span v-if="isSelected(idx, opt)">
-                                     <svg v-if="isCorrect(idx, opt)" class="w-5 h-5 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
-                                     <svg v-else class="w-5 h-5 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/></svg>
+                                     <svg v-if="isCorrect(idx, opt)" class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
+                                     <svg v-else class="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/></svg>
                                 </span>
                             </div>
                         </button>
@@ -333,20 +341,20 @@
 
     const PracticeTable = {
         template: `
-            <main class="flex-grow flex flex-col relative bg-white">
-                <div class="px-8 py-4 bg-white border-b border-slate-100">
+            <main id="practice-main" class="flex-grow flex flex-col relative bg-white">
+                <div id="reference-panel" class="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-slate-100 mobile-tight">
                     <details class="group">
-                        <summary class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-800 rounded-xl text-sm font-semibold hover:bg-slate-50 cursor-pointer outline-none shadow-sm transition-colors">
-                            <svg class="group-open:rotate-180 transition-transform" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        <summary id="theory-summary" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-800 rounded-xl text-xs md:text-sm font-semibold hover:bg-slate-50 cursor-pointer outline-none shadow-sm transition-colors">
+                            <svg class="group-open:rotate-180 transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                             Теория и справка
                         </summary>
-                        <div class="mt-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 prose prose-slate prose-sm max-w-none" v-html="renderedTheory"></div>
+                        <div id="theory-dropdown" class="mt-4 p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 prose prose-slate prose-sm max-w-none" v-html="renderedTheory"></div>
                     </details>
                 </div>
-                <div class="flex items-center bg-white border-b border-slate-50 px-8 py-2">
-                    <div class="flex overflow-x-auto gap-1">
+                <div id="sheet-tabs" class="flex items-center bg-white border-b border-slate-50 px-4 md:px-8 py-2 overflow-x-auto mobile-x-tight">
+                    <div class="flex gap-1">
                         <button v-for="name in store.sheetNames" :key="name" @click="store.currentSheetName = name"
-                            :class="['px-5 py-2 text-xs font-bold rounded-xl transition-all border', store.currentSheetName === name ? 'bg-slate-900 border-slate-900 text-white' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600']">
+                            :class="['px-4 py-2 text-[10px] md:text-xs font-bold rounded-xl transition-all border whitespace-nowrap', store.currentSheetName === name ? 'bg-black border-black text-white' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600']">
                             {{ name }}
                         </button>
                     </div>
@@ -398,7 +406,6 @@
         }
     };
 
-    // --- APP INIT ---
     const app = createApp({
         components: { 
             'app-navigation': Navigation, 
