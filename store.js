@@ -45,7 +45,14 @@
             chapters: (state) => [...new Set(state.steps.map((s) => s.chapter))],
             filteredSteps: (state) => state.steps.filter((s) => s.chapter === state.selectedChapter),
             activeStep: (state) => state.steps.find((s) => s.id === state.currentStepId),
-            sheetNames: (state) => (state.activeStep?.sheets ? Object.keys(state.activeStep.sheets) : [])
+            sheetNames: (state) => (state.activeStep?.sheets ? Object.keys(state.activeStep.sheets) : []),
+            activeStepInstruction: (state) => {
+                const step = state.steps.find((s) => s.id === state.currentStepId);
+                if (!step) return '';
+                // For theory the full markdown content is rendered in step component.
+                if (step.type === 'theory') return '';
+                return step.content || '';
+            }
         },
         actions: {
             async fetchSteps(initialStepId) {
@@ -79,14 +86,14 @@
                 this.selectedChapter = step.chapter;
                 this.validationStatus = null;
 
-                if (step.type === 'practice') {
+                if (step.type === 'practice' && step.sheets && typeof step.sheets === 'object') {
                     Object.entries(step.sheets).forEach(([name, data]) => {
                         const key = `${id}_${name}`;
                         if (!this.runtimeData[key]) {
                             this.runtimeData[key] = JSON.parse(JSON.stringify(data));
                         }
                     });
-                    this.currentSheetName = this.sheetNames[0];
+                    this.currentSheetName = this.sheetNames[0] || '';
                 }
             },
             selectChapter(chapter) {
@@ -98,20 +105,27 @@
                 this.quizAnswers[this.currentStepId][qIndex] = value;
 
                 const step = this.activeStep;
+                const quiz = step?.quiz || [];
+                if (!quiz.length) {
+                    this.validationStatus = null;
+                    return;
+                }
+
                 const userAns = this.quizAnswers[this.currentStepId];
-                const isCorrect = step.quiz.every((q, i) => userAns[i] === q.answer);
+                const isCorrect = quiz.every((q, i) => userAns[i] === q.answer);
                 this.validationStatus = isCorrect
                     ? 'success'
-                    : (Object.keys(userAns).length === step.quiz.length ? 'error' : null);
+                    : (Object.keys(userAns).length === quiz.length ? 'error' : null);
             },
             updateRuntimeData(newData) {
                 this.runtimeData[`${this.currentStepId}_${this.currentSheetName}`] = newData;
             },
             validateCurrentStep() {
                 const step = this.activeStep;
+                const solutions = step?.solutions || {};
                 let correctCount = 0;
 
-                Object.entries(step.solutions).forEach(([cellRef, expected]) => {
+                Object.entries(solutions).forEach(([cellRef, expected]) => {
                     const col = cellRef.charCodeAt(0) - 65;
                     const row = parseInt(cellRef.substring(1), 10) - 1;
                     const actual = String(window.hotRaw.getDataAtCell(row, col));
@@ -121,7 +135,7 @@
                 });
 
                 this.validationStatus =
-                    correctCount === Object.keys(step.solutions).length ? 'success' : 'error';
+                    correctCount === Object.keys(solutions).length ? 'success' : 'error';
                 window.hotRaw.render();
             },
             moveToNextStep() {
@@ -134,4 +148,3 @@
     window.useCourseStore = useCourseStore;
     window.useUiStore = useUiStore;
 })();
-

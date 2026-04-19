@@ -42,7 +42,7 @@
                     <div class="mb-2">
                         <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">{{ courseStore.activeStep?.title }}</h1>
                     </div>
-                    <p class="text-slate-600 text-sm md:text-base">{{ courseStore.activeStep?.instruction }}</p>
+                    <p class="text-slate-600 text-sm md:text-base">{{ courseStore.activeStepInstruction }}</p>
 
                     <!-- Dynamic Component Rendering -->
                     <component :is="activeStepComponent" :step="courseStore.activeStep" id="step-content-view"></component>
@@ -152,5 +152,6 @@
 </script>
 </body>
 </html>
+
 
 

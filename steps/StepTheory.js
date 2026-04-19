@@ -13,7 +13,7 @@
         },
         template: `
             <div class="space-y-4">
-                <div id="theory-content" class="p-4 md:p-6 bg-white border border-slate-200 rounded-2xl shadow-sm prose prose-slate prose-sm max-w-none" v-html="renderedContent"></div>
+                <div id="theory-content" class="prose prose-slate prose-sm max-w-none" v-html="renderedContent"></div>
                 <div id="theory-toolbar" class="flex items-center justify-start">
                     <button
                         id="continue-btn"
