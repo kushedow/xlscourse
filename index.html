@@ -37,12 +37,12 @@
             <app-navigation id="top-nav"></app-navigation>
 
             <!-- Instructions Area -->
-            <div id="instruction-section" class="bg-slate-50/50 p-4 md:p-8 border-b border-slate-100 mobile-tight">
+            <div id="instruction-section" class="bg-slate-50/50 p-4 md:px-8 border-b border-slate-100 mobile-tight">
                 <div class="max-w-3xl">
                     <div class="mb-2">
                         <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">{{ courseStore.activeStep?.title }}</h1>
                     </div>
-                    <p class="text-slate-600 text-sm md:text-base mb-6">{{ courseStore.activeStep?.instruction }}</p>
+                    <p class="text-slate-600 text-sm md:text-base">{{ courseStore.activeStep?.instruction }}</p>
 
                     <!-- Dynamic Component Rendering -->
                     <component :is="activeStepComponent" :step="courseStore.activeStep" id="step-content-view"></component>

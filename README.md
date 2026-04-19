@@ -1,35 +1,57 @@
-# XLS Course
+﻿# XLS Course
 
 Одностраничное учебное приложение по Excel с тремя типами шагов:
-- `theory` - теория (Markdown)
-- `quiz` - тест с проверкой ответов
-- `practice` - практика в таблице (Handsontable + HyperFormula)
+- `theory` — теория (Markdown)
+- `quiz` — тест с проверкой ответов
+- `practice` — практика в таблице (Handsontable + HyperFormula)
 
 ## Запуск
 
 Приложение статическое, сборка не нужна.
 
-1. Откройте [index.html](C:\Users\g.homutov\WebstormProjects\xlscourse\xlscourse\index.html) в браузере.
+1. Откройте [index.html](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/index.html) в браузере.
 2. Дождитесь загрузки шагов курса с сервера.
 
-## Стек
+## Архитектура
 
-- Vue 3 (CDN)
-- Pinia (CDN)
-- Handsontable (CDN)
-- HyperFormula (CDN)
-- Tailwind CSS (CDN)
-- Marked (CDN)
+### Структура проекта
+
+- [index.html](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/index.html) — точка входа, инициализация Vue/Pinia/Router, рендер layout
+- [api.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/api.js) — слой API и эндпоинты (`API_ENDPOINTS`)
+- [store.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/store.js) — store-слой
+
+`components/`:
+- [loader-state.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/components/loader-state.js)
+- [error-state.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/components/error-state.js)
+- [navigation.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/components/navigation.js)
+- [hamburger-menu.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/components/hamburger-menu.js)
+
+`steps/`:
+- [StepTheory.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/steps/StepTheory.js)
+- [StepQuiz.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/steps/StepQuiz.js)
+- [StepPractice.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/steps/StepPractice.js)
+
+### Store
+
+Используются два Pinia store:
+- `useCourseStore` — шаги, текущий шаг, главы, проверка quiz/practice, runtime-данные таблиц
+- `useUiStore` — UI-состояния (`isLoading`, `error`, `isMenuOpen`)
+
+### Роутинг
+
+Используется `Vue Router` в hash-режиме (`createWebHashHistory`).
+Маршрут шага: `/#/:stepId` (например, `/#/3`).
 
 ## Запросы к серверу
 
-В приложении используется **один** HTTP-запрос к backend.
+В приложении используется один backend-запрос:
 
-### 1) Получение шагов курса
+### Получение шагов курса
 
 - Метод: `GET`
 - URL: `https://n.kushedow.tech/webhook/xls/steps`
-- Где вызывается: [index.html](C:\Users\g.homutov\WebstormProjects\xlscourse\xlscourse\index.html):201, [index.html](C:\Users\g.homutov\WebstormProjects\xlscourse\xlscourse\index.html):203, [index.html](C:\Users\g.homutov\WebstormProjects\xlscourse\xlscourse\index.html):245
+- Константа эндпоинта: `API_ENDPOINTS.STEPS` в [api.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/api.js)
+- Вызов: `courseApi.fetchSteps()` из [store.js](/C:/Users/g.homutov/WebstormProjects/xlscourse/xlscourse/store.js)
 - Тело запроса: отсутствует
 
 Пример запроса:
@@ -40,7 +62,7 @@ Host: n.kushedow.tech
 Accept: application/json
 ```
 
-Пример успешного ответа (`200 OK`, JSON-массив шагов):
+Пример ответа (`200 OK`):
 
 ```json
 [
@@ -86,11 +108,16 @@ Accept: application/json
 ]
 ```
 
-Поведение при ошибке:
-- Если сервер вернул не `2xx`, клиент считает загрузку неуспешной.
-- Если запрос завершился ошибкой сети/парсинга, клиент показывает сообщение: `Ошибка при загрузке курса.`
+Обработка ошибок:
+- Если ответ не `2xx`, запрос считается неуспешным.
+- При ошибке сети/парсинга показывается: `Ошибка при загрузке курса.`
 
-## Важные детали
+## Стек
 
-- Переходы между шагами, проверка тестов и практики выполняются на клиенте.
-- Дополнительных запросов на сохранение прогресса или отправку ответов нет.
+- Vue 3 (CDN)
+- Vue Router 4 (CDN)
+- Pinia (CDN)
+- Handsontable (CDN)
+- HyperFormula (CDN)
+- Tailwind CSS (CDN)
+- Marked (CDN)

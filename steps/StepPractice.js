@@ -8,7 +8,7 @@
     window.StepPracticeComponent = {
         template: `
             <main id="practice-main" class="flex-grow flex flex-col relative bg-white">
-                <div id="reference-panel" class=" py-3 md:py-4 bg-white border-b border-slate-100 mobile-tight">
+                <div id="reference-panel" class=" py-3 md:py-4 ">
                     <details class="group">
                         <summary id="theory-summary" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-800 rounded-xl text-xs md:text-sm font-semibold hover:bg-slate-50 cursor-pointer outline-none shadow-sm transition-colors">
                             <svg class="group-open:rotate-180 transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -17,10 +17,10 @@
                         <div id="theory-dropdown" class="mt-4 p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 prose prose-slate prose-sm max-w-none" v-html="renderedTheory"></div>
                     </details>
                 </div>
-                <div id="sheet-tabs" class="flex items-center bg-white border-b border-slate-50 py-2 overflow-x-auto mobile-x-tight">
+                <div id="sheet-tabs" class="flex items-center bg-white border-b border-slate-50 py-2 overflow-x-auto ">
                     <div class="flex gap-1">
                         <button v-for="name in courseStore.sheetNames" :key="name" @click="courseStore.currentSheetName = name"
-                            :class="['px-4 py-2 text-[10px] md:text-xs font-bold rounded-xl transition-all border whitespace-nowrap', courseStore.currentSheetName === name ? 'bg-black border-black text-white' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600']">
+                            :class="['px-2 py-1 text-xs rounded-md whitespace-nowrap', courseStore.currentSheetName === name ? 'bg-[#e5e7eb] border-black' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600']">
                             {{ name }}
                         </button>
                     </div>
@@ -33,7 +33,7 @@
                         id="validate-btn"
                         v-if="courseStore.validationStatus !== 'success'"
                         @click="courseStore.validateCurrentStep"
-                        class="bg-black hover:bg-slate-800 text-white px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
+                        class="bg-black hover:bg-slate-800 text-white px-4 md:px-4 py-3 rounded-lg font-bold text-sm transition-all shadow-lg"
                     >
                         Проверить
                     </button>
