@@ -1,0 +1,41 @@
+.handsontable { font-family: inherit; }
+[v-cloak] { display: none; }
+
+.cell-target { background-color: #eff6ff !important; }
+.cell-correct { background-color: #dcfce7 !important; color: #166534 !important; }
+.cell-incorrect { background-color: #fff1f2 !important; color: #9f1239 !important; }
+
+.htCore tr:first-child td { font-weight: bold !important; background-color: #f8fafc !important; }
+
+#hot-mount-point {
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.table-container-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden;
+}
+
+.loader {
+    border-top-color: #000;
+    animation: spinner 1.5s linear infinite;
+}
+
+@keyframes spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.prose pre { background-color: #f1f5f9 !important; color: #334155 !important; border-radius: 0.75rem; }
+.prose code { color: #000 !important; font-weight: 600; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
+
+@media (max-width: 640px) {
+    .mobile-tight { padding: 1rem !important; }
+    .mobile-x-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
+    .mobile-y-tight { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+}

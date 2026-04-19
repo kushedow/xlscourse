@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -7,424 +7,150 @@
 
     <!-- CDN Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handsontable/16.1.1/handsontable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hyperformula/dist/hyperformula.full.min.js"></script>   
+    <script src="https://cdn.jsdelivr.net/npm/hyperformula/dist/hyperformula.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
     <script src="https://unpkg.com/pinia@3/dist/pinia.iife.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
-
-    <style>
-        .handsontable { font-family: inherit; }
-        [v-cloak] { display: none; }
-        
-        .cell-target { background-color: #eff6ff !important; }
-        .cell-correct { background-color: #dcfce7 !important; color: #166534 !important; }
-        .cell-incorrect { background-color: #fff1f2 !important; color: #9f1239 !important; }
-        
-        .htCore tr:first-child td { font-weight: bold !important; background-color: #f8fafc !important; }
-        
-        #hot-mount-point {
-            width: 100%;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: hidden;
-        }
-
-        .table-container-wrapper {
-            padding: 0 !important;
-            margin: 0 !important;
-            border: none !important;
-            overflow: hidden;
-        }
-
-        .loader {
-            border-top-color: #000;
-            animation: spinner 1.5s linear infinite;
-        }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .prose pre { background-color: #f1f5f9 !important; color: #334155 !important; border-radius: 0.75rem; }
-        .prose code { color: #000 !important; font-weight: 600; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
-
-        /* Mobile Padding Minification */
-        @media (max-width: 640px) {
-            .mobile-tight { padding: 1rem !important; }
-            .mobile-x-tight { padding-left: 1rem !important; padding-right: 1rem !important; }
-            .mobile-y-tight { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-        }
-    </style>
+    <link rel="stylesheet" href="./extra.css">
 </head>
 <body class="p-2 md:p-8 text-slate-900 bg-[radial-gradient(circle_at_top_center,_#f8fafc_0%,_#ffffff_100%)] min-h-screen flex items-start justify-center">
 
 <div id="app" v-cloak class="w-full max-w-5xl">
+
     <!-- Loading State -->
-    <div id="loader-container" v-if="store.isLoading" class="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-3xl shadow-xl border border-slate-100">
-        <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-4"></div>
-        <p class="text-slate-500 font-medium">Загрузка учебных материалов...</p>
-    </div>
+    <app-loader-state v-if="uiStore.isLoading"></app-loader-state>
 
     <!-- Error State -->
-    <div id="error-container" v-else-if="store.error" class="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-3xl shadow-xl border border-rose-100 p-8 text-center">
-        <div class="bg-rose-50 text-rose-500 p-4 rounded-full mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-        </div>
-        <h2 class="text-xl font-bold text-slate-800 mb-2">Произошла ошибка</h2>
-        <p class="text-slate-500 mb-6">{{ store.error }}</p>
-        <button id="retry-btn" @click="store.fetchSteps" class="bg-black text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-800 transition-colors">
-            Попробовать снова
-        </button>
-    </div>
+    <app-error-state v-else-if="uiStore.error"></app-error-state>
 
     <!-- Main UI -->
     <div id="main-content-wrapper" v-else class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative min-h-[600px]">
-        
-        <!-- Hamburger Menu Content -->
-        <div id="menu-overlay" v-if="store.isMenuOpen" class="absolute inset-0 z-50 bg-white p-6 md:p-8 flex flex-col overflow-y-auto">
-            <div class="flex items-center justify-between mb-10">
-                <h2 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Главы обучения</h2>
-                <button id="close-menu-btn" @click="store.isMenuOpen = false" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            
-            <nav class="flex-grow">
-                <div class="space-y-2">
-                    <button 
-                        v-for="ch in store.getChapters" 
-                        :key="ch" 
-                        @click="store.selectChapterAndClose(ch)"
-                        :class="['w-full text-left px-6 py-4 rounded-2xl text-lg font-bold transition-all', store.selectedChapter === ch ? 'bg-black text-white shadow-lg' : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-100']"
-                    >
-                        {{ ch }}
-                    </button>
-                </div>
-            </nav>
-        </div>
+        <!-- Hamburger Menu -->
+        <app-hamburger-menu v-if="uiStore.isMenuOpen"></app-hamburger-menu>
 
         <!-- Main Content -->
-        <div v-show="!store.isMenuOpen" class="flex flex-col h-full">
+        <div v-show="!uiStore.isMenuOpen" class="flex flex-col h-full">
             <app-navigation id="top-nav"></app-navigation>
 
             <!-- Instructions Area -->
             <div id="instruction-section" class="bg-slate-50/50 p-4 md:p-8 border-b border-slate-100 mobile-tight">
                 <div class="max-w-3xl">
                     <div class="mb-2">
-                        <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">{{ store.activeStep?.title }}</h1>
+                        <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">{{ courseStore.activeStep?.title }}</h1>
                     </div>
-                    <p class="text-slate-600 text-sm md:text-base mb-6">{{ store.activeStep?.instruction }}</p>
+                    <p class="text-slate-600 text-sm md:text-base mb-6">{{ courseStore.activeStep?.instruction }}</p>
 
                     <!-- Dynamic Component Rendering -->
-                    <component :is="activeStepComponent" :step="store.activeStep" id="step-content-view"></component>
+                    <component :is="activeStepComponent" :step="courseStore.activeStep" id="step-content-view"></component>
                 </div>
             </div>
 
-            <!-- Table Component -->
-            <app-practice-table id="table-view" v-if="store.activeStep?.type === 'practice'"></app-practice-table>
-
-            <!-- Footer Toolbar -->
-            <div id="footer-toolbar" class="flex items-center justify-start bg-slate-50/50 border-t border-slate-100 px-4 md:px-8 py-4 md:py-5 gap-4 mt-auto mobile-x-tight">
-                <template v-if="store.activeStep?.type === 'practice'">
-                    <button 
-                        id="validate-btn"
-                        v-if="store.validationStatus !== 'success'"
-                        @click="store.validateCurrentStep"
-                        class="bg-black hover:bg-slate-800 text-white px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
-                    >
-                        Проверить
-                    </button>
-                    <button 
-                        id="next-step-btn"
-                        v-else
-                        @click="store.moveToNextStep"
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all shadow-lg"
-                    >
-                        Продолжить
-                    </button>
-                    <div v-if="store.validationStatus" 
-                        :class="['px-4 py-2 text-sm font-bold rounded-xl border transition-all', store.validationStatus === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700']">
-                        {{ store.validationStatus === 'success' ? 'Верно!' : 'Есть ошибки' }}
-                    </div>
-                </template>
-                <template v-else>
-                    <button 
-                        id="continue-btn"
-                        @click="store.moveToNextStep" 
-                        :disabled="store.activeStep?.type === 'quiz' && store.validationStatus !== 'success'"
-                        :class="['px-6 md:px-8 py-3 rounded-2xl font-extrabold text-sm transition-all', (store.activeStep?.type === 'quiz' && store.validationStatus !== 'success') ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-black hover:bg-slate-800 text-white shadow-lg']"
-                    >
-                        {{ store.activeStep?.type === 'quiz' ? 'Завершить проверку' : 'Перейти дальше' }}
-                    </button>
-                    <span v-if="store.activeStep?.type === 'quiz' && store.validationStatus === 'success'" class="text-emerald-600 font-bold text-sm ml-2">Отлично!</span>
-                </template>
-            </div>
         </div>
     </div>
 </div>
 
+<script src="./api.js"></script>
+<script src="./store.js"></script>
+<script src="./components/loader-state.js"></script>
+<script src="./components/error-state.js"></script>
+<script src="./components/hamburger-menu.js"></script>
+<script src="./components/navigation.js"></script>
+<script src="./steps/StepTheory.js"></script>
+<script src="./steps/StepQuiz.js"></script>
+<script src="./steps/StepPractice.js"></script>
 <script>
-    const { createApp, ref, onMounted, nextTick, watch, computed } = Vue;
-    const { createPinia, defineStore } = Pinia;
 
-    const useLearningStore = defineStore('learning', {
-        state: () => ({
-            currentStepId: 1,
-            selectedChapter: '',
-            currentSheetName: '',
-            validationStatus: null,
-            runtimeData: {},
-            validationResults: {},
-            quizAnswers: {}, 
-            steps: [],
-            isLoading: true,
-            error: null,
-            isMenuOpen: false
-        }),
-        getters: {
-            getChapters: (state) => [...new Set(state.steps.map(s => s.chapter))],
-            filteredSteps: (state) => state.steps.filter(s => s.chapter === state.selectedChapter),
-            activeStep: (state) => state.steps.find(s => s.id === state.currentStepId),
-            sheetNames: (state) => (state.activeStep?.sheets) ? Object.keys(state.activeStep.sheets) : []
-        },
-        actions: {
-            async fetchSteps() {
-                this.isLoading = true;
-                this.error = null;
-                const url = 'https://n.kushedow.tech/webhook/xls/steps';
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
-                    const data = await response.json();
-                    this.steps = data;
-                    if (this.steps.length > 0) this.setCurrentStep(this.steps[0].id);
-                    this.isLoading = false;
-                } catch (err) {
-                    this.error = "Ошибка при загрузке курса.";
-                    this.isLoading = false;
-                }
-            },
-            setCurrentStep(id) {
-                const step = this.steps.find(s => s.id === id);
-                if (step) {
-                    this.currentStepId = id;
-                    this.selectedChapter = step.chapter;
-                    this.validationStatus = null;
-                    if (step.type === 'practice') {
-                        Object.entries(step.sheets).forEach(([name, data]) => {
-                            const key = `${id}_${name}`;
-                            if (!this.runtimeData[key]) this.runtimeData[key] = JSON.parse(JSON.stringify(data));
-                        });
-                        this.currentSheetName = this.sheetNames[0];
-                    }
-                }
-            },
-            selectChapterAndClose(chapter) {
-                const firstStep = this.steps.find(s => s.chapter === chapter);
-                if (firstStep) this.setCurrentStep(firstStep.id);
-                this.isMenuOpen = false;
-            },
-            selectQuizOption(qIndex, value) {
-                if (!this.quizAnswers[this.currentStepId]) this.quizAnswers[this.currentStepId] = {};
-                this.quizAnswers[this.currentStepId][qIndex] = value;
-                const step = this.activeStep;
-                const userAns = this.quizAnswers[this.currentStepId];
-                const isCorrect = step.quiz.every((q, i) => userAns[i] === q.answer);
-                this.validationStatus = isCorrect ? 'success' : (Object.keys(userAns).length === step.quiz.length ? 'error' : null);
-            },
-            updateRuntimeData(newData) {
-                this.runtimeData[`${this.currentStepId}_${this.currentSheetName}`] = newData;
-            },
-            validateCurrentStep() {
-                const step = this.activeStep;
-                let correctCount = 0;
-                Object.entries(step.solutions).forEach(([cellRef, expected]) => {
-                    const col = cellRef.charCodeAt(0) - 65;
-                    const row = parseInt(cellRef.substring(1)) - 1;
-                    const actual = String(window.hotRaw.getDataAtCell(row, col));
-                    const ok = (actual === String(expected));
-                    this.validationResults[`${this.currentStepId}_${this.currentSheetName}_${cellRef}`] = ok;
-                    if (ok) correctCount++;
-                });
-                this.validationStatus = (correctCount === Object.keys(step.solutions).length) ? 'success' : 'error';
-                window.hotRaw.render();
-            },
-            moveToNextStep() {
-                const idx = this.steps.findIndex(s => s.id === this.currentStepId);
-                if (this.steps[idx + 1]) this.setCurrentStep(this.steps[idx + 1].id);
-            }
-        }
+    const EmptyRouteComponent = { template: '<div></div>' };
+    const router = VueRouter.createRouter({
+        history: VueRouter.createWebHashHistory(),
+        routes: [
+            { path: '/', component: EmptyRouteComponent },
+            { path: '/:stepId', component: EmptyRouteComponent }
+        ]
     });
 
-    const Navigation = {
-        template: `
-            <header class="bg-white border-b border-slate-100 p-3 md:p-5 px-4 md:px-8 flex items-center justify-between mobile-x-tight">
-                <div id="nav-left" class="flex items-center gap-3">
-                    <!-- Excel Icon -->
-                    <div id="excel-logo" class="w-7 h-7 md:w-8 md:h-8 flex-shrink-0">
-                        <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-                            <path d="M180 32H214C225.046 32 234 40.9543 234 52V204C234 215.046 225.046 224 214 224H180V32Z" fill="#1D6F42"/>
-                            <path d="M22 45.5C22 41.6023 24.8143 38.2618 28.6797 37.7464L160.68 20.1464C166.19 19.4117 171 23.6828 171 29.25V226.75C171 232.317 166.19 236.588 160.68 235.854L28.6797 218.254C24.8143 217.738 22 214.398 22 210.5V45.5Z" fill="#217346"/>
-                            <path d="M68 93L125 163M125 93L68 163" stroke="white" stroke-width="24" stroke-linecap="square"/>
-                        </svg>
-                    </div>
-                    
-                    <div id="step-nav" class="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                            <button v-for="s in store.filteredSteps" :key="s.id" @click="store.setCurrentStep(s.id)"
-                                :class="['w-7 h-7 md:w-9 md:h-9 flex items-center justify-center text-[10px] md:text-xs font-bold rounded-lg transition-all', store.currentStepId === s.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700']">
-                                {{ s.id }}
-                            </button>
-                        </div>
-                        <span id="current-chapter-label" class="text-[10px] font-black text-slate-400 tracking-widest uppercase sm:ml-2">{{ store.selectedChapter }}</span>
-                    </div>
-                </div>
-                
-                <button id="open-menu-btn" @click="store.isMenuOpen = true" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-            </header>
-        `,
-        setup() { return { store: useLearningStore() }; }
-    };
-
-    const TheoryBlock = {
-        props: ['step'],
-        setup(props) {
-            const renderedContent = computed(() => marked.parse(props.step.content || ''));
-            return { renderedContent };
+    const app = Vue.createApp({
+        components: {
+            'app-loader-state': window.LoaderStateComponent,
+            'app-error-state': window.ErrorStateComponent,
+            'app-hamburger-menu': window.HamburgerMenuComponent,
+            'app-navigation': window.NavigationComponent,
+            'step-theory': window.StepTheoryComponent,
+            'step-quiz': window.StepQuizComponent,
+            'step-practice': window.StepPracticeComponent
         },
-        template: `<div id="theory-content" class="p-4 md:p-6 bg-white border border-slate-200 rounded-2xl shadow-sm prose prose-slate prose-sm max-w-none" v-html="renderedContent"></div>`
-    };
-
-    const QuizBlock = {
-        props: ['step'],
-        template: `
-            <div id="quiz-container" class="space-y-4 md:space-y-6">
-                <div v-for="(q, idx) in step.quiz" :key="idx" class="p-4 md:p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                    <p class="font-bold mb-4 text-slate-800 text-base md:text-lg">{{ q.question }}</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button v-for="opt in q.options" :key="opt" @click="store.selectQuizOption(idx, opt)"
-                            :class="['text-left px-4 md:px-5 py-3 border-2 rounded-xl transition-all font-medium text-xs md:text-sm', getBtnClass(idx, opt)]">
-                            <div class="flex items-center justify-between">
-                                <span>{{ opt }}</span>
-                                <span v-if="isSelected(idx, opt)">
-                                     <svg v-if="isCorrect(idx, opt)" class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/></svg>
-                                     <svg v-else class="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/></svg>
-                                </span>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `,
-        setup(props) {
-            const store = useLearningStore();
-            const isSelected = (idx, opt) => store.quizAnswers[store.currentStepId]?.[idx] === opt;
-            const isCorrect = (idx, opt) => props.step.quiz[idx].answer === opt;
-            const getBtnClass = (idx, opt) => {
-                if (!isSelected(idx, opt)) return 'border-slate-100 bg-white hover:border-slate-300 text-slate-600';
-                return isCorrect(idx, opt) ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-rose-500 bg-rose-50 text-rose-700';
-            };
-            return { store, isSelected, isCorrect, getBtnClass };
-        }
-    };
-
-    const PracticeTable = {
-        template: `
-            <main id="practice-main" class="flex-grow flex flex-col relative bg-white">
-                <div id="reference-panel" class="px-4 md:px-8 py-3 md:py-4 bg-white border-b border-slate-100 mobile-tight">
-                    <details class="group">
-                        <summary id="theory-summary" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-800 rounded-xl text-xs md:text-sm font-semibold hover:bg-slate-50 cursor-pointer outline-none shadow-sm transition-colors">
-                            <svg class="group-open:rotate-180 transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                            Теория и справка
-                        </summary>
-                        <div id="theory-dropdown" class="mt-4 p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 prose prose-slate prose-sm max-w-none" v-html="renderedTheory"></div>
-                    </details>
-                </div>
-                <div id="sheet-tabs" class="flex items-center bg-white border-b border-slate-50 px-4 md:px-8 py-2 overflow-x-auto mobile-x-tight">
-                    <div class="flex gap-1">
-                        <button v-for="name in store.sheetNames" :key="name" @click="store.currentSheetName = name"
-                            :class="['px-4 py-2 text-[10px] md:text-xs font-bold rounded-xl transition-all border whitespace-nowrap', store.currentSheetName === name ? 'bg-black border-black text-white' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600']">
-                            {{ name }}
-                        </button>
-                    </div>
-                </div>
-                <div class="table-container-wrapper">
-                    <div id="hot-mount-point"></div>
-                </div>
-            </main>
-        `,
         setup() {
-            const store = useLearningStore();
-            let hfRaw = null;
-            const renderedTheory = computed(() => marked.parse(store.activeStep?.theory || ''));
-            
-            const initTable = async () => {
-                if (!store.activeStep || store.activeStep.type !== 'practice') return;
-                if (window.hotRaw) window.hotRaw.destroy();
-                if (hfRaw) hfRaw.destroy();
-                hfRaw = HyperFormula.buildEmpty({ licenseKey: 'gpl-v3' });
-                store.sheetNames.forEach(name => {
-                    hfRaw.addSheet(name);
-                    hfRaw.setSheetContent(hfRaw.getSheetId(name), store.runtimeData[`${store.currentStepId}_${name}`]);
-                });
-                await nextTick();
-                const container = document.getElementById('hot-mount-point');
-                if (!container) return;
-                window.hotRaw = new Handsontable(container, {
-                    data: store.runtimeData[`${store.currentStepId}_${store.currentSheetName}`],
-                    rowHeaders: true, colHeaders: true, height: 'auto', stretchH: 'all',
-                    licenseKey: 'non-commercial-and-evaluation',
-                    formulas: { engine: hfRaw, sheetName: store.currentSheetName, licenseKey: 'gpl-v3' },
-                    afterChange(changes, src) { if (src !== 'loadData') { store.validationStatus = null; store.updateRuntimeData(this.getData()); } },
-                    cells(row, col) {
-                        const cellProps = { className: '' };
-                        const cellRef = String.fromCharCode(65 + col) + (row + 1);
-                        if (row === 0) cellProps.className += ' font-bold';
-                        const solutions = store.activeStep?.solutions || {};
-                        if (solutions[cellRef] !== undefined) {
-                            const res = store.validationResults[`${store.currentStepId}_${store.currentSheetName}_${cellRef}`];
-                            cellProps.className += res === true ? ' cell-correct' : (res === false ? ' cell-incorrect' : ' cell-target');
-                        }
-                        return cellProps;
+            const courseStore = window.useCourseStore();
+            const uiStore = window.useUiStore();
+            const route = VueRouter.useRoute();
+            const routerInstance = VueRouter.useRouter();
+
+            const parseRouteStepId = function () {
+                const value = Number(route.params.stepId);
+                return Number.isInteger(value) && value > 0 ? value : null;
+            };
+
+            const syncRouteToStore = function () {
+                if (!courseStore.steps.length) return;
+
+                const stepId = parseRouteStepId();
+                if (stepId === null) {
+                    if (courseStore.currentStepId) {
+                        routerInstance.replace(`/${courseStore.currentStepId}`);
                     }
-                });
-            };
-            watch([() => store.currentStepId, () => store.currentSheetName, () => store.isLoading], initTable);
-            onMounted(initTable);
-            return { store, renderedTheory };
-        }
-    };
+                    return;
+                }
 
-    const app = createApp({
-        components: { 
-            'app-navigation': Navigation, 
-            'theory-step': TheoryBlock, 
-            'quiz-step': QuizBlock, 
-            'app-practice-table': PracticeTable 
-        },
-        setup() {
-            const store = useLearningStore();
-            const activeStepComponent = computed(() => {
-                if (!store.activeStep) return null;
-                return { 'theory': 'theory-step', 'quiz': 'quiz-step' }[store.activeStep.type] || null;
+                const exists = courseStore.steps.some(function (s) { return s.id === stepId; });
+                if (!exists) {
+                    routerInstance.replace(`/${courseStore.currentStepId}`);
+                    return;
+                }
+
+                if (courseStore.currentStepId !== stepId) {
+                    courseStore.setCurrentStep(stepId);
+                }
+            };
+
+            const activeStepComponent = Vue.computed(function () {
+                if (!courseStore.activeStep) return null;
+                return { theory: 'step-theory', quiz: 'step-quiz', practice: 'step-practice' }[courseStore.activeStep.type] || null;
             });
-            onMounted(() => store.fetchSteps());
-            return { store, activeStepComponent };
+
+            Vue.onMounted(async function () {
+                await courseStore.fetchSteps(parseRouteStepId());
+                syncRouteToStore();
+            });
+
+            Vue.watch(function () { return route.params.stepId; }, function () {
+                syncRouteToStore();
+            });
+
+            Vue.watch(function () { return courseStore.currentStepId; }, function (stepId) {
+                if (!stepId) return;
+                const routeStepId = parseRouteStepId();
+                if (routeStepId !== stepId) {
+                    routerInstance.push(`/${stepId}`);
+                }
+            });
+
+            return {
+                courseStore: courseStore,
+                uiStore: uiStore,
+                activeStepComponent: activeStepComponent
+            };
         }
     });
 
-    app.use(createPinia()).mount('#app');
+    app.use(Pinia.createPinia());
+    app.use(router);
+    app.mount('#app');
 </script>
 </body>
 </html>
+
+
