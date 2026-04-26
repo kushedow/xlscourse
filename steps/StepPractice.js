@@ -263,6 +263,7 @@
                     height: 'auto',
                     stretchH: 'all',
                     licenseKey: 'non-commercial-and-evaluation',
+                    editor: false,
                     outsideClickDeselects: false,
                     formulas: { engine: hfRaw, sheetName: courseStore.currentSheetName, licenseKey: 'gpl-v3' },
                     afterInit: function () {
