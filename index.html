@@ -13,8 +13,11 @@
     <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
     <script src="https://unpkg.com/pinia@3/dist/pinia.iife.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-excel-formula.min.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
     <link rel="stylesheet" href="./extra.css">
 </head>
 <body class="p-2 md:p-8 text-slate-900 bg-[radial-gradient(circle_at_top_center,_#f8fafc_0%,_#ffffff_100%)] min-h-screen flex items-start justify-center">
@@ -42,7 +45,10 @@
                     <div class="mb-2">
                         <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">{{ courseStore.activeStep?.title }}</h1>
                     </div>
-                    <p class="text-slate-600 text-sm md:text-base">{{ courseStore.activeStepInstruction }}</p>
+                    <div
+                        class="text-slate-600 text-sm md:text-base prose prose-slate prose-sm max-w-none"
+                        v-html="activeStepInstructionHtml"
+                    ></div>
 
                     <!-- Dynamic Component Rendering -->
                     <component :is="activeStepComponent" :step="courseStore.activeStep" id="step-content-view"></component>
@@ -120,6 +126,9 @@
                 if (!courseStore.activeStep) return null;
                 return { theory: 'step-theory', quiz: 'step-quiz', practice: 'step-practice' }[courseStore.activeStep.type] || null;
             });
+            const activeStepInstructionHtml = Vue.computed(function () {
+                return marked.parse(courseStore.activeStepInstruction || '');
+            });
 
             Vue.onMounted(async function () {
                 await courseStore.fetchSteps(parseRouteStepId());
@@ -141,7 +150,8 @@
             return {
                 courseStore: courseStore,
                 uiStore: uiStore,
-                activeStepComponent: activeStepComponent
+                activeStepComponent: activeStepComponent,
+                activeStepInstructionHtml: activeStepInstructionHtml
             };
         }
     });
