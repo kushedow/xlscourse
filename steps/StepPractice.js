@@ -19,12 +19,12 @@
                         <div id="theory-dropdown" class="mt-4 p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-700 prose prose-slate prose-sm max-w-none" v-html="renderedTheory"></div>
                     </details>
                 </div>
-                <div id="formula-panel" class="py-3 md:py-4">
-                    <div class="relative border border-slate-300 rounded-xl bg-transparent overflow-hidden">
+                <div id="formula-panel" class="order-4 md:order-2 py-3 md:py-4 bg-transparent">
+                    <div class="relative border border-slate-300 rounded-md bg-transparent overflow-hidden">
                         <pre
                             ref="formulaHighlightRef"
                             aria-hidden="true"
-                            class="m-0 whitespace-pre overflow-x-auto overflow-y-hidden pointer-events-none h-[48px]"
+                            class="m-0 whitespace-pre overflow-x-auto overflow-y-hidden pointer-events-none h-[32px]"
                             :style="formulaEditorStyle"
                         ><code ref="formulaCodeRef" class="language-excel-formula"></code></pre>
                         <input
@@ -40,24 +40,29 @@
                             @scroll="syncFormulaScroll"
                             type="text"
                             spellcheck="false"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
                             class="absolute inset-0 w-full h-full bg-transparent text-transparent caret-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
                             :style="formulaEditorStyle"
                             :placeholder="formulaInputPlaceholder"
+                            :disabled="!hasActiveCellSelection"
                         />
                     </div>
-                    <div class="flex items-center gap-2 pt-2 overflow-x-auto md:overflow-visible whitespace-nowrap">
+                    <div class="flex flex-wrap items-center gap-2 pt-2">
                         <button
                             v-for="token in formulaPaletteTokens"
                             :key="token"
                             @click="insertFormulaToken(token)"
                             type="button"
                             class="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md transition-colors"
+                            :disabled="!hasActiveCellSelection"
                         >
                             {{ token }}
                         </button>
                     </div>
                 </div>
-                <div v-if="courseStore.sheetNames.length > 1" id="sheet-tabs" class="flex items-center bg-white border-b border-slate-50 py-2 overflow-x-auto ">
+                <div v-if="courseStore.sheetNames.length > 1" id="sheet-tabs" class="order-2 md:order-3 flex items-center bg-white border-b border-slate-50 py-2 overflow-x-auto ">
                     <div class="flex gap-1">
                         <button v-for="name in courseStore.sheetNames" :key="name" @click="courseStore.currentSheetName = name"
                             :class="['px-2 py-1 text-xs rounded-md whitespace-nowrap', courseStore.currentSheetName === name ? 'bg-[#e5e7eb] border-black' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600']">
@@ -65,10 +70,10 @@
                         </button>
                     </div>
                 </div>
-                <div class="table-container-wrapper">
+                <div class="order-3 md:order-4 table-container-wrapper my-4">
                     <div id="hot-mount-point"></div>
                 </div>
-                <div id="practice-toolbar" class="flex items-center justify-start bg-slate-50/50 border-t border-slate-100  py-4  gap-4 mt-auto ">
+                <div id="practice-toolbar" class="order-5 md:order-5 flex items-center justify-start py-4  gap-4 mt-auto ">
                     <button
                         id="validate-btn"
                         v-if="courseStore.validationStatus !== 'success'"
@@ -117,8 +122,8 @@
             let keepFormulaFocusOnBlur = false;
 
             // 3) UI config
-            const formulaEditorStyle = 'margin:0;padding:12px;font-size:16px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-weight:400;line-height:24px;letter-spacing:0;tab-size:4;white-space:pre;word-break:normal;';
-            const formulaPaletteTokens = ['=', '(', ':', '*', ')', ';', 'sum', 'if', 'ifs', 'countif', 'sumifs', '+', '-', '/',  '""'];
+            const formulaEditorStyle = 'margin:0;padding:4px 12px;font-size:16px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-weight:400;line-height:24px;letter-spacing:0;tab-size:4;white-space:pre;word-break:normal;background-color:transparent;';
+            const formulaPaletteTokens = ['=', '(', ':', '*', ')', ';', '+', '-', '/',  '""'];
 
             // 4) Computed state
             const renderedTheory = computed(function () {
@@ -132,6 +137,9 @@
                 return selectedRow.value === null || selectedCol.value === null
                     ? PLACEHOLDER_PICK_CELL
                     : PLACEHOLDER_ENTER_FORMULA;
+            });
+            const hasActiveCellSelection = computed(function () {
+                return selectedRow.value !== null && selectedCol.value !== null;
             });
 
             // 5) Helper functions (store and table access)
@@ -277,12 +285,19 @@
             };
 
             const handleFormulaInput = function () {
+                if (!hasActiveCell()) {
+                    formulaInput.value = '';
+                    refreshFormulaPreview();
+                    syncFormulaScroll();
+                    return;
+                }
                 refreshFormulaPreview();
                 syncFormulaScroll();
                 applyFormulaToSelectedCell();
             };
 
             const startFormulaEditMode = function () {
+                if (!hasActiveCell()) return;
                 isFormulaEditMode = true;
             };
 
@@ -340,6 +355,7 @@
             };
 
             const insertFormulaToken = function (token) {
+                if (!hasActiveCell()) return;
                 const inputEl = formulaInputRef.value;
                 if (!inputEl) return;
                 if (token === '=') {
@@ -515,6 +531,7 @@
                 formulaEditorStyle: formulaEditorStyle,
                 formulaPaletteTokens: formulaPaletteTokens,
                 formulaInputPlaceholder: formulaInputPlaceholder,
+                hasActiveCellSelection: hasActiveCellSelection,
                 refreshFormulaPreview: refreshFormulaPreview,
                 syncFormulaScroll: syncFormulaScroll,
                 focusFormulaInput: focusFormulaInput,

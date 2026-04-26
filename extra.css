@@ -20,12 +20,12 @@
     overflow: hidden;
 }
 
-.table-container-wrapper {
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    overflow: hidden;
-}
+/*.table-container-wrapper {*/
+/*    padding: 0 !important;*/
+/*    margin: 0 !important;*/
+/*    border: none !important;*/
+/*    overflow: hidden;*/
+/*}*/
 
 .loader {
     border-top-color: #000;
