@@ -4,6 +4,12 @@
 .cell-target { background-color: #eff6ff !important; }
 .cell-correct { background-color: #dcfce7 !important; color: #166534 !important; }
 .cell-incorrect { background-color: #fff1f2 !important; color: #9f1239 !important; }
+.cell-formula-linked {
+    box-shadow: inset 0 0 0 2px #2563eb !important;
+}
+.cell-reference-picked {
+    box-shadow: inset 0 0 0 2px #16a34a !important;
+}
 
 .htCore tr:first-child td { font-weight: bold !important; background-color: #f8fafc !important; }
 

@@ -1,8 +1,9 @@
-﻿﻿﻿(function () {
+﻿﻿(function () {
     const nextTick = Vue.nextTick;
     const watch = Vue.watch;
     const computed = Vue.computed;
     const onMounted = Vue.onMounted;
+    const onBeforeUnmount = Vue.onBeforeUnmount;
     const ref = Vue.ref;
     const useCourseStore = window.useCourseStore;
 
@@ -33,6 +34,9 @@
                             @input="handleFormulaInput"
                             @focus="startFormulaEditMode"
                             @blur="stopFormulaEditMode"
+                            @keydown.enter.prevent="handleFormulaEnterKey"
+                            @keydown.esc.prevent="handleFormulaEscKey"
+                            @keydown.escape.prevent="handleFormulaEscKey"
                             @scroll="syncFormulaScroll"
                             type="text"
                             spellcheck="false"
@@ -41,7 +45,7 @@
                             :placeholder="formulaInputPlaceholder"
                         />
                     </div>
-                    <div class="flex items-center gap-2 pt-2">
+                    <div class="flex items-center gap-2 pt-2 overflow-x-auto md:overflow-visible whitespace-nowrap">
                         <button
                             v-for="token in formulaPaletteTokens"
                             :key="token"
@@ -91,7 +95,14 @@
             </main>
         `,
         setup() {
+            // 1) Core dependencies and constants
             const courseStore = useCourseStore();
+            const FORMULA_UPDATE_SOURCE = 'formula-editor';
+            const EMPTY_FORMULA_PLACEHOLDER = ' ';
+            const PLACEHOLDER_PICK_CELL = 'Выберите ячейку';
+            const PLACEHOLDER_ENTER_FORMULA = 'Введите формулу';
+
+            // 2) Runtime refs/state
             let hfRaw = null;
             const formulaInput = ref('');
             const formulaCodeRef = ref(null);
@@ -99,10 +110,49 @@
             const formulaInputRef = ref(null);
             const selectedRow = ref(null);
             const selectedCol = ref(null);
+            const referenceRow = ref(null);
+            const referenceCol = ref(null);
             let isSyncingFromTable = false;
             let isFormulaEditMode = false;
+            let keepFormulaFocusOnBlur = false;
+
+            // 3) UI config
             const formulaEditorStyle = 'margin:0;padding:12px;font-size:16px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-weight:400;line-height:24px;letter-spacing:0;tab-size:4;white-space:pre;word-break:normal;';
             const formulaPaletteTokens = ['=', '(', ':', '*', ')', ';', 'sum', 'if', 'ifs', 'countif', 'sumifs', '+', '-', '/',  '""'];
+
+            // 4) Computed state
+            const renderedTheory = computed(function () {
+                return marked.parse((courseStore.activeStep && courseStore.activeStep.theory) || '');
+            });
+            const hasTheory = computed(function () {
+                const theory = (courseStore.activeStep && courseStore.activeStep.theory) || '';
+                return String(theory).trim().length > 0;
+            });
+            const formulaInputPlaceholder = computed(function () {
+                return selectedRow.value === null || selectedCol.value === null
+                    ? PLACEHOLDER_PICK_CELL
+                    : PLACEHOLDER_ENTER_FORMULA;
+            });
+
+            // 5) Helper functions (store and table access)
+            const getHot = function () {
+                return window.hotRaw || null;
+            };
+
+            const setHot = function (instance) {
+                window.hotRaw = instance;
+            };
+
+            const destroyHot = function () {
+                const hot = getHot();
+                if (hot) hot.destroy();
+                setHot(null);
+            };
+
+            const destroyFormulaEngine = function () {
+                if (hfRaw) hfRaw.destroy();
+                hfRaw = null;
+            };
 
             const getSelectionStoreKey = function () {
                 return (courseStore.currentStepId || 'unknown') + '_' + (courseStore.currentSheetName || 'Sheet1');
@@ -121,6 +171,11 @@
                 bag[getSelectionStoreKey()] = { row: selectedRow.value, col: selectedCol.value };
             };
 
+            const clearSelectedCellFromStore = function () {
+                const bag = ensureSelectionStore();
+                delete bag[getSelectionStoreKey()];
+            };
+
             const readSelectedCellFromStore = function () {
                 const bag = ensureSelectionStore();
                 const saved = bag[getSelectionStoreKey()];
@@ -129,10 +184,37 @@
                 return saved;
             };
 
+            const clearSelectedCellState = function () {
+                selectedRow.value = null;
+                selectedCol.value = null;
+            };
+
+            const clearReferenceCellState = function () {
+                referenceRow.value = null;
+                referenceCol.value = null;
+            };
+
+            const setSelectedCellState = function (row, col) {
+                selectedRow.value = row;
+                selectedCol.value = col;
+            };
+
+            const hasActiveCell = function () {
+                return selectedRow.value !== null && selectedCol.value !== null;
+            };
+
+            const isActiveCell = function (row, col) {
+                return selectedRow.value === row && selectedCol.value === col;
+            };
+
+            const formulaContainsEquals = function () {
+                return (formulaInput.value || '').includes('=');
+            };
+
             const refreshFormulaPreview = function () {
                 const codeEl = formulaCodeRef.value;
                 if (!codeEl) return;
-                codeEl.textContent = formulaInput.value || ' ';
+                codeEl.textContent = formulaInput.value || EMPTY_FORMULA_PLACEHOLDER;
                 if (window.Prism && typeof window.Prism.highlightElement === 'function') {
                     window.Prism.highlightElement(codeEl);
                 }
@@ -146,9 +228,30 @@
                 highlightEl.scrollLeft = inputEl.scrollLeft;
             };
 
+            const focusFormulaInput = function () {
+                const inputEl = formulaInputRef.value;
+                if (!inputEl) return;
+                inputEl.focus();
+                const pos = (formulaInput.value || '').length;
+                inputEl.setSelectionRange(pos, pos);
+                syncFormulaScroll();
+            };
+
+            const forceFormulaFocus = function () {
+                keepFormulaFocusOnBlur = true;
+                nextTick(function () {
+                    focusFormulaInput();
+                    setTimeout(function () {
+                        focusFormulaInput();
+                        keepFormulaFocusOnBlur = false;
+                    }, 0);
+                });
+            };
+
             const readCellRawValue = function (row, col) {
-                if (!window.hotRaw || row === null || col === null) return '';
-                const value = window.hotRaw.getSourceDataAtCell(row, col);
+                const hot = getHot();
+                if (!hot || row === null || col === null) return '';
+                const value = hot.getSourceDataAtCell(row, col);
                 return value === null || value === undefined ? '' : String(value);
             };
 
@@ -165,11 +268,12 @@
 
             const applyFormulaToSelectedCell = function () {
                 if (isSyncingFromTable) return;
-                if (!window.hotRaw || selectedRow.value === null || selectedCol.value === null) return;
+                const hot = getHot();
+                if (!hot || selectedRow.value === null || selectedCol.value === null) return;
                 const currentValue = readCellRawValue(selectedRow.value, selectedCol.value);
                 const nextValue = formulaInput.value || '';
                 if (currentValue === nextValue) return;
-                window.hotRaw.setDataAtCell(selectedRow.value, selectedCol.value, nextValue, 'formula-editor');
+                hot.setDataAtCell(selectedRow.value, selectedCol.value, nextValue, FORMULA_UPDATE_SOURCE);
             };
 
             const handleFormulaInput = function () {
@@ -183,7 +287,41 @@
             };
 
             const stopFormulaEditMode = function () {
+                if (keepFormulaFocusOnBlur) {
+                    forceFormulaFocus();
+                    return;
+                }
                 isFormulaEditMode = false;
+                clearReferenceCellState();
+                const hot = getHot();
+                if (hot) hot.render();
+            };
+
+            const forgetActiveCellSelection = function () {
+                clearSelectedCellState();
+                clearReferenceCellState();
+                clearSelectedCellFromStore();
+                formulaInput.value = '';
+                refreshFormulaPreview();
+                syncFormulaScroll();
+                const hot = getHot();
+                if (hot) {
+                    hot.deselectCell();
+                    hot.render();
+                }
+            };
+
+            const handleFormulaEnterKey = function () {
+                forgetActiveCellSelection();
+            };
+
+            const handleFormulaEscKey = function () {
+                forgetActiveCellSelection();
+            };
+
+            const isResetSelectionKey = function (event) {
+                if (!event) return false;
+                return event.key === 'Enter' || event.key === 'Escape' || event.key === 'Esc';
             };
 
             const columnToLetters = function (col) {
@@ -228,35 +366,8 @@
                 });
             };
 
-            const renderedTheory = computed(function () {
-                return marked.parse((courseStore.activeStep && courseStore.activeStep.theory) || '');
-            });
-            const hasTheory = computed(function () {
-                const theory = (courseStore.activeStep && courseStore.activeStep.theory) || '';
-                return String(theory).trim().length > 0;
-            });
-            const formulaInputPlaceholder = computed(function () {
-                return selectedRow.value === null || selectedCol.value === null
-                    ? 'Выберите ячейку'
-                    : 'Введите формулу';
-            });
-
-            const initTable = async function () {
-                if (!courseStore.activeStep || courseStore.activeStep.type !== 'practice') return;
-                if (window.hotRaw) window.hotRaw.destroy();
-                if (hfRaw) hfRaw.destroy();
-                hfRaw = HyperFormula.buildEmpty({ licenseKey: 'gpl-v3' });
-
-                courseStore.sheetNames.forEach(function (name) {
-                    hfRaw.addSheet(name);
-                    hfRaw.setSheetContent(hfRaw.getSheetId(name), courseStore.runtimeData[courseStore.currentStepId + '_' + name]);
-                });
-
-                await nextTick();
-                const container = document.getElementById('hot-mount-point');
-                if (!container) return;
-
-                window.hotRaw = new Handsontable(container, {
+            const buildHotOptions = function () {
+                return {
                     data: courseStore.runtimeData[courseStore.currentStepId + '_' + courseStore.currentSheetName],
                     rowHeaders: true,
                     colHeaders: true,
@@ -285,21 +396,52 @@
                             syncFormulaFromSelectedCell();
                         }
                     },
-                    afterSelectionEnd(row, col) {
-                        if (isFormulaEditMode) return;
-                        selectedRow.value = row;
-                        selectedCol.value = col;
-                        saveSelectedCellToStore();
-                        syncFormulaFromSelectedCell();
-                    },
                     beforeOnCellMouseDown(event, coords, td, controller) {
-                        if (!isFormulaEditMode) return;
                         if (!coords || coords.row < 0 || coords.col < 0) return;
                         controller.row = false;
                         controller.column = false;
                         controller.cell = false;
                         event.preventDefault();
-                        insertFormulaToken(toCellAddress(coords.row, coords.col));
+
+                        const hadActiveCell = hasActiveCell();
+                        if (hadActiveCell && isActiveCell(coords.row, coords.col)) {
+                            return false;
+                        }
+
+                        if (!hadActiveCell) {
+                            setSelectedCellState(coords.row, coords.col);
+                            clearReferenceCellState();
+                            saveSelectedCellToStore();
+                            syncFormulaFromSelectedCell();
+                            forceFormulaFocus();
+                            const hot = getHot();
+                            if (hot) hot.render();
+                            return false;
+                        }
+
+                        if (hadActiveCell && formulaContainsEquals()) {
+                            referenceRow.value = coords.row;
+                            referenceCol.value = coords.col;
+                            forceFormulaFocus();
+                            insertFormulaToken(toCellAddress(coords.row, coords.col));
+                            const hot = getHot();
+                            if (hot) hot.render();
+                            return false;
+                        }
+
+                        setSelectedCellState(coords.row, coords.col);
+                        clearReferenceCellState();
+                        saveSelectedCellToStore();
+                        syncFormulaFromSelectedCell();
+                        const hot = getHot();
+                        if (hot) hot.render();
+                        return false;
+                    },
+                    beforeKeyDown(event) {
+                        if (!isResetSelectionKey(event)) return;
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        forgetActiveCellSelection();
                     },
                     cells(row, col) {
                         const cellProps = { className: '' };
@@ -311,25 +453,55 @@
                             const res = courseStore.validationResults[courseStore.currentStepId + '_' + courseStore.currentSheetName + '_' + cellRef];
                             cellProps.className += res === true ? ' cell-correct' : (res === false ? ' cell-incorrect' : ' cell-target');
                         }
+                        if (selectedRow.value === row && selectedCol.value === col) {
+                            cellProps.className += ' cell-formula-linked';
+                        } else if (referenceRow.value === row && referenceCol.value === col) {
+                            cellProps.className += ' cell-reference-picked';
+                        }
                         return cellProps;
                     }
+                };
+            };
+
+            // 6) Main table lifecycle
+            const initTable = async function () {
+                if (!courseStore.activeStep || courseStore.activeStep.type !== 'practice') return;
+                destroyHot();
+                destroyFormulaEngine();
+                hfRaw = HyperFormula.buildEmpty({ licenseKey: 'gpl-v3' });
+
+                courseStore.sheetNames.forEach(function (name) {
+                    hfRaw.addSheet(name);
+                    hfRaw.setSheetContent(hfRaw.getSheetId(name), courseStore.runtimeData[courseStore.currentStepId + '_' + name]);
                 });
 
-                selectedRow.value = null;
-                selectedCol.value = null;
+                await nextTick();
+                const container = document.getElementById('hot-mount-point');
+                if (!container) return;
+
+                setHot(new Handsontable(container, buildHotOptions()));
+
+                clearSelectedCellState();
+                clearReferenceCellState();
                 formulaInput.value = '';
                 refreshFormulaPreview();
             };
 
+            // 7) Watchers and lifecycle
             watch([
                 function () { return courseStore.currentStepId; },
                 function () { return courseStore.currentSheetName; },
                 function () { return courseStore.activeStep && courseStore.activeStep.type; }
             ], initTable);
+
             onMounted(async function () {
                 await initTable();
                 await nextTick();
                 refreshFormulaPreview();
+            });
+            onBeforeUnmount(function () {
+                destroyHot();
+                destroyFormulaEngine();
             });
 
             return {
@@ -345,7 +517,10 @@
                 formulaInputPlaceholder: formulaInputPlaceholder,
                 refreshFormulaPreview: refreshFormulaPreview,
                 syncFormulaScroll: syncFormulaScroll,
+                focusFormulaInput: focusFormulaInput,
                 handleFormulaInput: handleFormulaInput,
+                handleFormulaEnterKey: handleFormulaEnterKey,
+                handleFormulaEscKey: handleFormulaEscKey,
                 startFormulaEditMode: startFormulaEditMode,
                 stopFormulaEditMode: stopFormulaEditMode,
                 insertFormulaToken: insertFormulaToken

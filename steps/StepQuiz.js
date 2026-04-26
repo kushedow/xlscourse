@@ -7,7 +7,6 @@
             <div class="space-y-4 md:space-y-6">
                 <div id="quiz-container" class="space-y-4 md:space-y-6">
                     <div v-for="(q, idx) in step.quiz" :key="idx" class="py-4">
-                       
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button v-for="opt in q.options" :key="opt" @click="courseStore.selectQuizOption(idx, opt)"
                                 :class="['text-left px-4 md:px-5 py-3 border-2 rounded-xl transition-all font-medium text-xs md:text-sm', getBtnClass(idx, opt)]">
@@ -19,7 +18,6 @@
                                     </span>
                                 </div>
                             </button>
-                        </div>
                         </div>
                     </div>
                 </div>
